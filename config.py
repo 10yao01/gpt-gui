@@ -1,16 +1,21 @@
 MODEL_MAPPING = [
     'gpt-3.5-turbo-1106',
-    'gpt-4-1106-preview'
+    'qwen',
+    'Qwen2.5-7B-Instruct'
 ]
 
 COST_PER_TOKEN = {
+    'qwen': {
+        'prompt': 0.01 / 1000,
+        'completion': 0.005 / 1000
+    },
+    'Qwen2.5-7B-Instruct': {
+        'prompt': 0.01 / 1000,
+        'completion': 0.005 / 1000
+    },
     'gpt-3.5-turbo-1106': {
         'prompt': 0.001 / 1000,
-        'completion': 0.002 / 1000
-    },
-    'gpt-4-1106-preview': {
-        'prompt': 0.01 / 1000,
-        'completion': 0.03 / 1000
+        'completion': 0.02 / 1000
     }
 }
 

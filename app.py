@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from typing import Tuple, Any
 from config import MODEL_MAPPING, COST_PER_TOKEN, DEFAULT_MESSAGES
 from datetime import datetime
+import requests
 
 load_dotenv()
 
@@ -12,7 +13,9 @@ class GPTChat:
     def __init__(self, api_key: str):
         st.set_page_config(page_title='Chat', page_icon='💬')
         # print("key: {}".format(api_key))
-        self.client = OpenAI(api_key="sk-P3N9W5E4ZbDU7GRwoiHL4tJaFXsliJHBrXAFmHannHs9i9CT", base_url="https://api.chatanywhere.tech/v1")
+        self.client1 = OpenAI(api_key="sk-P3N9W5E4ZbDU7GRwoiHL4tJaFXsliJHBrXAFmHannHs9i9CT", base_url="https://api.chatanywhere.tech/v1")
+        self.client2 = OpenAI(base_url="http://172.18.32.119:8000/v1")
+        
         self.MODEL_MAPPING = MODEL_MAPPING
         self.COST_PER_TOKEN = COST_PER_TOKEN
         self.DEFAULT_MESSAGES = DEFAULT_MESSAGES
@@ -37,9 +40,6 @@ class GPTChat:
         
         for key, value in initial_state.items():
             st.session_state.setdefault(key, value)
-        # # 初始化会话名称（仅在首次运行时）
-        # if 'conversation_name' not in st.session_state:
-        #     st.session_state['conversation_name'] = 'default_conversation'
 
     def get_current_data(self, key):
         return st.session_state['conversations'][st.session_state['current_conversation']].get(key, [])
@@ -112,12 +112,19 @@ class GPTChat:
     def generate_response(self, prompt: str, model_name: str) -> Tuple[str, Any]:
         current_messages = self.get_current_data('messages')
         current_messages.append({'role': 'user', 'content': prompt})
-        
-        completion = self.client.chat.completions.create(
-            model=model_name,
-            messages=current_messages,
-            temperature=0,
-        )
+
+        if 'gpt' in model_name:
+            completion = self.client1.chat.completions.create(
+                model=model_name,
+                messages=current_messages,
+                temperature=0,
+            )
+        else:
+            completion = self.client2.chat.completions.create(
+                model=model_name,
+                messages=current_messages,
+                temperature=0,
+            )
         
         response = completion.choices[0].message.content
         current_messages.append({'role': 'assistant', 'content': response})
@@ -151,11 +158,41 @@ class GPTChat:
                 st.chat_message(name='user', avatar='🧑').markdown(user_msg)
                 st.chat_message(name='ai', avatar='🤖').markdown(ai_msg)
 
+    # def update_client(self, model_name):
+    #     """根据模型名称更新客户端"""
+    #     print(f"正在切换模型到: {model_name}")  # 调试日志
+    #     if "gpt" in model_name:
+    #         self.client = OpenAI(api_key="sk-P3N9W5E4ZbDU7GRwoiHL4tJaFXsliJHBrXAFmHannHs9i9CT", base_url="https://api.chatanywhere.tech/v1")
+    #         print(f"已切换到GPT模型: {model_name}")
+    #     elif "qwen" in model_name:
+    #         self.client = OpenAI(api_key="", base_url="http://172.18.32.119:8000/v1")
+    #         print(f"已切换到千问模型: {model_name}")
+
     def chat_demo(self):
         st.markdown('# 智慧农语', unsafe_allow_html=True)
-        st.markdown('## 输入任意文本开始对话', unsafe_allow_html=True)
+        # st.markdown('## 输入任意文本开始对话', unsafe_allow_html=True)
 
-        model_name = st.sidebar.selectbox('选择模型:', self.MODEL_MAPPING)
+        # 添加模型选择回调
+        def on_model_change():
+            selected_model = st.session_state.model_select_key  # 从session_state获取当前选择
+            # self.update_client(selected_model)  # 更新客户端
+            st.toast(f"模型已切换至: {selected_model}", icon="✅")
+
+        # 带回调的模型选择组件
+        model_name = st.sidebar.selectbox(
+            '选择模型:',
+            self.MODEL_MAPPING,
+            key='model_select_key',
+            on_change=on_model_change  # 绑定回调函数
+        )
+        
+        # 初始化客户端（处理首次加载和session重置）
+        if 'model_select_key' not in st.session_state:
+            st.session_state.model_select_key = model_name
+        # 初始化客户端（首次运行或session重置时）
+        # if not hasattr(self, 'client') or not self.client:
+        #     self.update_client(model_name)
+
         counter_placeholder = st.sidebar.empty()
         current_cost = self.get_current_data('total_cost')
         counter_placeholder.write(f"当前会话总成本: ${current_cost:.5f}")
@@ -180,8 +217,6 @@ class GPTChat:
             if st.sidebar.button(name, key=f"convo_{name}", type=btn_type):
                 self.switch_conversation(name)
 
-        # # 显示当前会话名称
-        # st.sidebar.write(f"当前会话: {st.session_state['conversation_name']}")
 
         # 会话管理按钮
         col3, col4 = st.sidebar.columns([1, 1])

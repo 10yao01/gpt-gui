@@ -1,16 +1,12 @@
 import os
 import streamlit as st
 from openai import OpenAI
-from dotenv import load_dotenv
 from typing import Tuple, Any
 from config import MODEL_MAPPING, COST_PER_TOKEN, DEFAULT_MESSAGES
 from datetime import datetime
-import requests
-
-load_dotenv()
 
 class GPTChat:
-    def __init__(self, api_key: str):
+    def __init__(self):
         st.set_page_config(page_title='Chat', page_icon='💬')
         # print("key: {}".format(api_key))
         self.client1 = OpenAI(api_key="sk-P3N9W5E4ZbDU7GRwoiHL4tJaFXsliJHBrXAFmHannHs9i9CT", base_url="https://api.chatanywhere.tech/v1")
@@ -158,16 +154,6 @@ class GPTChat:
                 st.chat_message(name='user', avatar='🧑').markdown(user_msg)
                 st.chat_message(name='ai', avatar='🤖').markdown(ai_msg)
 
-    # def update_client(self, model_name):
-    #     """根据模型名称更新客户端"""
-    #     print(f"正在切换模型到: {model_name}")  # 调试日志
-    #     if "gpt" in model_name:
-    #         self.client = OpenAI(api_key="sk-P3N9W5E4ZbDU7GRwoiHL4tJaFXsliJHBrXAFmHannHs9i9CT", base_url="https://api.chatanywhere.tech/v1")
-    #         print(f"已切换到GPT模型: {model_name}")
-    #     elif "qwen" in model_name:
-    #         self.client = OpenAI(api_key="", base_url="http://172.18.32.119:8000/v1")
-    #         print(f"已切换到千问模型: {model_name}")
-
     def chat_demo(self):
         st.markdown('# 智慧农语', unsafe_allow_html=True)
         # st.markdown('## 输入任意文本开始对话', unsafe_allow_html=True)
@@ -189,9 +175,6 @@ class GPTChat:
         # 初始化客户端（处理首次加载和session重置）
         if 'model_select_key' not in st.session_state:
             st.session_state.model_select_key = model_name
-        # 初始化客户端（首次运行或session重置时）
-        # if not hasattr(self, 'client') or not self.client:
-        #     self.update_client(model_name)
 
         counter_placeholder = st.sidebar.empty()
         current_cost = self.get_current_data('total_cost')
@@ -258,6 +241,5 @@ class GPTChat:
             self.rename_conversation(new_name)
 
 if __name__ == '__main__':
-    api_key = os.getenv("OPENAI_API_KEY")  # Fetch the API key from environment variables
-    gpt_chat = GPTChat(api_key)
+    gpt_chat = GPTChat()
     gpt_chat.chat_demo()

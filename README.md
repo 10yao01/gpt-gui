@@ -48,5 +48,3 @@ pytest tests
 ## License
 This project is licensed under the MIT License. See the [LICENSE](LICENCE) file for details.
 
-清空对话 必须先导出一次，才会正常显示
-添加绘画 再导出也有延迟

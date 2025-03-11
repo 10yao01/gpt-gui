@@ -178,7 +178,7 @@ class GPTChat:
 
         counter_placeholder = st.sidebar.empty()
         current_cost = self.get_current_data('total_cost')
-        counter_placeholder.write(f"当前会话总成本: ${current_cost:.5f}")
+        # counter_placeholder.write(f"当前会话总成本: ${current_cost:.5f}")
 
         st.sidebar.markdown('---')
         st.sidebar.markdown('## 会话管理')
@@ -200,12 +200,17 @@ class GPTChat:
             if st.sidebar.button(name, key=f"convo_{name}", type=btn_type):
                 self.switch_conversation(name)
 
+        
+        # 用户输入处理
+        user_input = st.chat_input(placeholder='请输入消息...', key='input')
+        if user_input:
+            output, usage = self.process_user_input(user_input, model_name)
 
+        
         # 会话管理按钮
         col3, col4 = st.sidebar.columns([1, 1])
         with col3:
             current_data = st.session_state['conversations'][st.session_state['current_conversation']]
-            # Implement the export functionality (for now it can be a simple download)
             conversation_data = {
                 'past': current_data['past'],
                 'generated': current_data['generated'],
@@ -214,7 +219,8 @@ class GPTChat:
             }
             now = datetime.now()
             st.download_button(
-                label="导出记录",
+                label="下载",
+                icon=":material/download:",
                 data=str(conversation_data),
                 file_name=f"{st.session_state['current_conversation']}_{now:%Y-%m-%d %H.%M}.txt",
                 mime="text/txt"
@@ -223,15 +229,9 @@ class GPTChat:
             if st.button('清空对话'):
                 self.clear_conversation()
 
-        
-        # 用户输入处理
-        user_input = st.chat_input(placeholder='请输入消息...', key='input')
-        if user_input:
-            output, usage = self.process_user_input(user_input, model_name)
-
         # 显示聊天记录
         self.display_chat_history(st.container())
-        counter_placeholder.write(f"当前会话总成本: ${self.get_current_data('total_cost'):.5f}")
+        # counter_placeholder.write(f"当前会话总成本: ${self.get_current_data('total_cost'):.5f}")
 
     @st.dialog("重命名会话")
     def rename_conversation_modal(self):

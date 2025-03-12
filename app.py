@@ -9,8 +9,8 @@ class GPTChat:
     def __init__(self):
         st.set_page_config(page_title='Chat', page_icon='💬')
         # print("key: {}".format(api_key))
-        self.client1 = OpenAI(api_key="sk-P3N9W5E4ZbDU7GRwoiHL4tJaFXsliJHBrXAFmHannHs9i9CT", base_url="https://api.chatanywhere.tech/v1")
-        self.client2 = OpenAI(base_url="http://172.18.32.119:8000/v1")
+        self.client1 = OpenAI(api_key="KEY", base_url="URL")
+        self.client2 = OpenAI(base_url="URL")
         
         self.MODEL_MAPPING = MODEL_MAPPING
         self.COST_PER_TOKEN = COST_PER_TOKEN

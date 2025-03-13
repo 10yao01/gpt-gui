@@ -11,6 +11,8 @@ class GPTChat:
         # print("key: {}".format(api_key))
         self.client1 = OpenAI(api_key="KEY", base_url="URL")
         self.client2 = OpenAI(base_url="URL")
+        self.client3 = OpenAI(base_url="URL")
+
         
         self.MODEL_MAPPING = MODEL_MAPPING
         self.COST_PER_TOKEN = COST_PER_TOKEN
@@ -105,7 +107,7 @@ class GPTChat:
             'total_cost': 0.0
         }
 
-    def generate_response(self, prompt: str, model_name: str) -> Tuple[str, Any]:
+    def generate_response(self, prompt: str, model_name: str, temperature: float) -> Tuple[str, Any]:
         current_messages = self.get_current_data('messages')
         current_messages.append({'role': 'user', 'content': prompt})
 
@@ -113,13 +115,19 @@ class GPTChat:
             completion = self.client1.chat.completions.create(
                 model=model_name,
                 messages=current_messages,
-                temperature=0,
+                temperature=temperature,
             )
-        else:
+        elif 'sft' in model_name:
             completion = self.client2.chat.completions.create(
                 model=model_name,
                 messages=current_messages,
-                temperature=0,
+                temperature=temperature,
+            )
+        else:
+            completion = self.client3.chat.completions.create(
+                model=model_name,
+                messages=current_messages,
+                temperature=temperature,
             )
         
         response = completion.choices[0].message.content
@@ -127,8 +135,8 @@ class GPTChat:
         self.set_current_data('messages', current_messages)
         return response, completion.usage
 
-    def process_user_input(self, user_input: str, model_name: str) -> Tuple[str, Any]:
-        output, usage = self.generate_response(user_input, model_name)
+    def process_user_input(self, user_input: str, model_name: str, temperature: float) -> Tuple[str, Any]:
+        output, usage = self.generate_response(user_input, model_name, temperature)
         # 更新当前会话数据
         self.set_current_data('past', self.get_current_data('past') + [user_input])
         self.set_current_data('generated', self.get_current_data('generated') + [output])
@@ -176,9 +184,11 @@ class GPTChat:
         if 'model_select_key' not in st.session_state:
             st.session_state.model_select_key = model_name
 
-        counter_placeholder = st.sidebar.empty()
-        current_cost = self.get_current_data('total_cost')
+        # counter_placeholder = st.sidebar.empty()
+        # current_cost = self.get_current_data('total_cost')
         # counter_placeholder.write(f"当前会话总成本: ${current_cost:.5f}")
+
+        temperature = st.sidebar.slider("温度", min_value=0.0, max_value=1.0, value=0.0, step=0.1)
 
         st.sidebar.markdown('---')
         st.sidebar.markdown('## 会话管理')
@@ -204,12 +214,15 @@ class GPTChat:
         # 用户输入处理
         user_input = st.chat_input(placeholder='请输入消息...', key='input')
         if user_input:
-            output, usage = self.process_user_input(user_input, model_name)
+            output, usage = self.process_user_input(user_input, model_name, temperature)
 
         
         # 会话管理按钮
         col3, col4 = st.sidebar.columns([1, 1])
         with col3:
+            if st.button('清空对话'):
+                self.clear_conversation()
+        with col4:
             current_data = st.session_state['conversations'][st.session_state['current_conversation']]
             conversation_data = {
                 'past': current_data['past'],
@@ -219,15 +232,12 @@ class GPTChat:
             }
             now = datetime.now()
             st.download_button(
-                label="下载",
+                label="下载记录",
                 icon=":material/download:",
                 data=str(conversation_data),
                 file_name=f"{st.session_state['current_conversation']}_{now:%Y-%m-%d %H.%M}.txt",
                 mime="text/txt"
             )
-        with col4:
-            if st.button('清空对话'):
-                self.clear_conversation()
 
         # 显示聊天记录
         self.display_chat_history(st.container())

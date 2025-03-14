@@ -7,66 +7,85 @@ from datetime import datetime
 
 class GPTChat:
     def __init__(self):
+        # 设置页面标题和图标
         st.set_page_config(page_title='Chat', page_icon='💬')
         # print("key: {}".format(api_key))
+        # 创建三个OpenAI客户端，分别使用不同的API密钥和基础URL
         self.client1 = OpenAI(api_key="KEY", base_url="URL")
         self.client2 = OpenAI(base_url="URL")
         self.client3 = OpenAI(base_url="URL")
 
         
+        # 定义模型映射、每令牌成本和默认消息
         self.MODEL_MAPPING = MODEL_MAPPING
         self.COST_PER_TOKEN = COST_PER_TOKEN
         self.DEFAULT_MESSAGES = DEFAULT_MESSAGES
+        # 初始化会话状态
         self.initialize_session_state()
 
     def initialize_session_state(self):
+        # 初始化会话状态
         initial_state = {
             'conversations': {  # 存储所有会话
                 'default_conversation': {
-                    'generated': [],
-                    'past': [],
-                    'messages': self.DEFAULT_MESSAGES.copy(),
-                    'model_name': [],
-                    'cost': [],
-                    'total_tokens': [],
-                    'total_cost': 0.0
+                    'generated': [],  # 存储生成的消息
+                    'past': [],  # 存储过去的消息
+                    'messages': self.DEFAULT_MESSAGES.copy(),  # 默认消息
+                    'model_name': [],  # 模型名称
+                    'cost': [],  # 成本
+                    'total_tokens': [],  # 总tokens
+                    'total_cost': 0.0  # 总成本
                 }
             },
             'current_conversation': 'default_conversation',  # 当前会话名称
             'conversation_names': ['default_conversation']   # 会话名称列表
         }
         
+        # 将初始状态设置到session_state中
         for key, value in initial_state.items():
             st.session_state.setdefault(key, value)
 
+    # 获取当前对话中的数据
     def get_current_data(self, key):
+        # 从session_state中获取当前对话的数据
         return st.session_state['conversations'][st.session_state['current_conversation']].get(key, [])
 
+    # 设置当前对话的键值对
     def set_current_data(self, key, value):
+        # 在session_state中，将当前对话的键值对设置为传入的键和值
         st.session_state['conversations'][st.session_state['current_conversation']][key] = value
     
     @st.dialog(("新建会话"))
     def new_conversation(self):
+        # 获取用户输入的会话名称
         name = st.text_input("请输入会话名称:")
+        # 如果用户点击了OK按钮
         if st.button("OK"):
+            # 如果会话名称不为空且会话名称不在会话列表中
             if name.strip() and name not in st.session_state['conversation_names']:
                 # 创建新会话
                 st.session_state['conversations'][name] = {
-                    'generated': [],
-                    'past': [],
-                    'messages': self.DEFAULT_MESSAGES.copy(),
-                    'model_name': [],
-                    'cost': [],
-                    'total_tokens': [],
-                    'total_cost': 0.0
+                    'generated': [],  # 生成的内容
+                    'past': [],  # 过去的内容
+                    'messages': self.DEFAULT_MESSAGES.copy(),  # 默认消息
+                    'model_name': [],  # 模型名称
+                    'cost': [],  # 成本
+                    'total_tokens': [],  # 总tokens
+                    'total_cost': 0.0  # 总成本
                 }
+                # 设置当前会话为新建的会话
                 st.session_state['current_conversation'] = name
+                # 将会话名称添加到会话列表中
                 st.session_state['conversation_names'].append(name)
+                # 重新运行程序
                 st.rerun()
 
     def switch_conversation(self, name):
+        # 判断name是否在st.session_state['conversations']中
         if name in st.session_state['conversations']:
+            # 将st.session_state['current_conversation']设置为name
             st.session_state['current_conversation'] = name
+            # 重新运行程序
             st.rerun()
 
 
@@ -85,6 +104,7 @@ class GPTChat:
     
     @st.dialog("删除会话")
     def delete_current_conversation(self):
+        # 如果会话列表长度大于1，则删除当前会话
         if len(st.session_state['conversations']) > 1:
             current = st.session_state['current_conversation']
             del st.session_state['conversations'][current]
@@ -93,49 +113,63 @@ class GPTChat:
             st.session_state['current_conversation'] = st.session_state['conversation_names'][0]
             st.rerun()
         else:
+            # 否则，显示错误信息
             st.error("至少保留一个会话", icon="⚠️")
 
     def clear_conversation(self):
+        # 获取当前对话的名称
         current_name = st.session_state['current_conversation']
+        # 将当前对话的名称对应的对话内容清空，重新赋值为默认值
         st.session_state['conversations'][current_name] = {
-            'generated': [],
-            'past': [],
-            'messages': self.DEFAULT_MESSAGES.copy(),
-            'model_name': [],
-            'cost': [],
-            'total_tokens': [],
-            'total_cost': 0.0
+            'generated': [],  # 生成的内容
+            'past': [],  # 过去的内容
+            'messages': self.DEFAULT_MESSAGES.copy(),  # 默认消息
+            'model_name': [],  # 模型名称
+            'cost': [],  # 成本
+            'total_tokens': [],  # 总tokens
+            'total_cost': 0.0  # 总成本
         }
 
     def generate_response(self, prompt: str, model_name: str, temperature: float) -> Tuple[str, Any]:
+        # 获取当前的消息数据
         current_messages = self.get_current_data('messages')
+        # 将用户输入的消息添加到当前的消息数据中
         current_messages.append({'role': 'user', 'content': prompt})
 
+        # 根据模型名称选择不同的客户端
         if 'gpt' in model_name:
+            # 使用client1生成回复
             completion = self.client1.chat.completions.create(
                 model=model_name,
                 messages=current_messages,
                 temperature=temperature,
             )
         elif 'sft' in model_name:
+            # 使用client2生成回复
             completion = self.client2.chat.completions.create(
                 model=model_name,
                 messages=current_messages,
                 temperature=temperature,
             )
         else:
+            # 使用client3生成回复
             completion = self.client3.chat.completions.create(
                 model=model_name,
                 messages=current_messages,
                 temperature=temperature,
             )
         
+        # 获取生成的回复
         response = completion.choices[0].message.content
+        # 将生成的回复添加到当前的消息数据中
         current_messages.append({'role': 'assistant', 'content': response})
+        # 更新当前的消息数据
         self.set_current_data('messages', current_messages)
+        # 返回生成的回复和使用的资源
         return response, completion.usage
 
     def process_user_input(self, user_input: str, model_name: str, temperature: float) -> Tuple[str, Any]:
+        # 生成模型响应
         output, usage = self.generate_response(user_input, model_name, temperature)
         # 更新当前会话数据
         self.set_current_data('past', self.get_current_data('past') + [user_input])
@@ -143,23 +177,33 @@ class GPTChat:
         self.set_current_data('model_name', self.get_current_data('model_name') + [model_name])
         self.set_current_data('total_tokens', self.get_current_data('total_tokens') + [usage.total_tokens])
         
+        # 计算模型费用
         cost = self.calculate_cost(model_name, usage)
         self.set_current_data('cost', self.get_current_data('cost') + [cost])
         return output, usage
 
     # 修改calculate_cost方法更新总成本
     def calculate_cost(self, model_name: str, usage: Any) -> float:
+        # 计算模型使用成本
         cost = (usage.prompt_tokens * self.COST_PER_TOKEN[model_name]['prompt'] +
                 usage.completion_tokens * self.COST_PER_TOKEN[model_name]['completion'])
+        # 将当前成本加入总成本
         self.set_current_data('total_cost', self.get_current_data('total_cost') + cost)
+        # 返回当前成本
         return cost
 
     @staticmethod
+    # 定义一个函数，用于显示聊天历史
     def display_chat_history(response_container: st.container):
+        # 使用with语句，将response_container作为上下文管理器
         with response_container:
+            # 获取当前会话的数据
             current_data = st.session_state['conversations'][st.session_state['current_conversation']]
+            # 遍历当前会话的过去和生成的消息
             for user_msg, ai_msg in zip(current_data['past'], current_data['generated']):
+                # 显示用户消息
                 st.chat_message(name='user', avatar='🧑').markdown(user_msg)
+                # 显示AI消息
                 st.chat_message(name='ai', avatar='🤖').markdown(ai_msg)
 
     def chat_demo(self):
@@ -246,7 +290,9 @@ class GPTChat:
     @st.dialog("重命名会话")
     def rename_conversation_modal(self):
         """重命名会话对话框"""
+        # 输入新会话名称
         new_name = st.text_input("请输入新会话名称:", value=st.session_state['current_conversation'])
+        # 点击确认按钮后，调用rename_conversation方法，传入新会话名称
         if st.button("确认"):
             self.rename_conversation(new_name)
 
